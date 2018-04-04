@@ -42,6 +42,8 @@ class miopenRNN
     Tensor<float> workspace_;
     Tensor<float> trainspace_;
 
+    Tensor<T> dweights_;
+
 public:
     miopenRNN(int hidden_size, int batch_size, int time_steps, const std::string& rnn_type) :
         sequenceLen_(time_steps),
@@ -79,7 +81,7 @@ public:
                                  miopenRNNskip,
                                  miopenRNNunidirection,
                                  rnn_mode,
-                                 miopenRNNNoBias,
+                                 miopenRNNwithBias,
                                  miopenRNNdefault,
                                  data_type);
 
@@ -112,6 +114,7 @@ public:
         workspace_  = zeros<float>(std::vector<int>{static_cast<int>(workspace_size_byte_/sizeof(float))});
         trainspace_ = zeros<float>(std::vector<int>{static_cast<int>(trainspace_size_byte_/sizeof(float))});
 
+        dweights_    = rand<T>(std::vector<int>{static_cast<int>(weight_size_byte_/sizeof(T))});
     }
 
     void forward(Tensor<T> x, Tensor<T> hx, Tensor<T> cx,
@@ -142,7 +145,8 @@ public:
 
     void backward_data( Tensor<T> y, Tensor<T> dy, Tensor<T> dhy,
                         Tensor<T> dcy, Tensor<T> hx, Tensor<T> cx,
-                        Tensor<T> dx, Tensor<T> dhx, Tensor<T> dcx) {
+                        Tensor<T> dx, Tensor<T> dhx, Tensor<T> dcx)
+    {
         CHECK_MIOPEN_ERROR(miopenRNNBackwardData(miopen_handle_.handle(),
                                                 rnnDesc_.desc(),
                                                 sequenceLen_,
@@ -172,6 +176,24 @@ public:
                                                 trainspace_size_byte_) );
     }
 
+    void backward_weight( Tensor<T> x, Tensor<T> hx, Tensor<T> y)
+    {
+        CHECK_MIOPEN_ERROR(miopenRNNBackwardWeights(miopen_handle_.handle(),
+                                                    rnnDesc_.desc(),
+                                                    sequenceLen_,
+                                                    xDescArray_.ptr(),
+                                                    (void *)x.begin(),
+                                                    hxDesc_.desc(),
+                                                    (void *)hx.begin(),
+                                                    yDescArray_.ptr(),
+                                                    (void *)y.begin(),
+                                                    wDesc_.desc(),
+                                                    (void *)dweights_.begin(),
+                                                    (void *)workspace_.begin(),
+                                                    workspace_size_byte_,
+                                                    (void *)trainspace_.begin(),
+                                                    trainspace_size_byte_) );
+    }
 };
 
 template<typename T>
@@ -233,6 +255,23 @@ std::tuple<int, int, int> time_rnn(
 
         end = std::chrono::steady_clock::now();
         bwd_inputs_time = std::chrono::duration<double, std::micro>(end - start).count() / num_repeats;
+
+
+        //Warm up
+            rnn.backward_weight( x, hx, y);
+
+        hipDeviceSynchronize();
+
+        start = std::chrono::steady_clock::now();
+
+        for (int i = 0; i < num_repeats; ++i) 
+        {
+            rnn.backward_weight( x, hx, y);
+        }
+        hipDeviceSynchronize();
+
+        end = std::chrono::steady_clock::now();
+        bwd_params_time = std::chrono::duration<double, std::micro>(end - start).count() / num_repeats;
     }
 
     return std::tuple<int, int, int>(fwd_time, bwd_inputs_time, bwd_params_time);
