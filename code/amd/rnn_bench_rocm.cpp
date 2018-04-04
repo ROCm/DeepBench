@@ -81,7 +81,7 @@ public:
                                  miopenRNNskip,
                                  miopenRNNunidirection,
                                  rnn_mode,
-                                 miopenRNNNoBias,
+                                 miopenRNNwithBias,
                                  miopenRNNdefault,
                                  data_type);
 
