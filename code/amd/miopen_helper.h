@@ -67,6 +67,8 @@ public:
         miopenDataType_t type;
         if (std::is_same<T, float>::value)
             type = miopenFloat;
+        else if (std::is_same<T, half_float::half>::value)
+            type = miopenHalf;
         else
             throw std::runtime_error("Unknown type");
 
@@ -109,6 +111,8 @@ public:
         miopenDataType_t type;
         if (std::is_same<T, float>::value)
             type = miopenFloat;
+        else if (std::is_same<T, half_float::half>::value)
+            type = miopenHalf;
         else
             throw std::runtime_error("Unknown type");
 
@@ -145,6 +149,8 @@ public:
         miopenDataType_t type;
         if (std::is_same<T, float>::value)
             type = miopenFloat;
+        else if (std::is_same<T, half_float::half>::value)
+            type = miopenHalf;
         else
             throw std::runtime_error("Unknown type");
 
@@ -180,6 +186,8 @@ public:
         miopenDataType_t type;
         if (std::is_same<T, float>::value)
             type = miopenFloat;
+        else if (std::is_same<T, half_float::half>::value)
+            type = miopenHalf;
         else
             throw std::runtime_error("Unknown type");
 
